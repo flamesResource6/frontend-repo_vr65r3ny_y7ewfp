@@ -1,5 +1,4 @@
-import React, { useState } from 'react'
-import Spline from '@splinetool/react-spline'
+import React, { useState, useEffect, Suspense } from 'react'
 import { motion } from 'framer-motion'
 
 const traits = [
@@ -10,10 +9,14 @@ const traits = [
   'Creator',
 ]
 
+// Lazy load Spline to prevent hard crashes if WebGL/module fails
+const LazySpline = React.lazy(() => import('@splinetool/react-spline').then(mod => ({ default: mod.default })))
+
 export default function Hero({ profile, onUpload }) {
   const [index, setIndex] = useState(0)
+  const [splineEnabled, setSplineEnabled] = useState(true)
 
-  React.useEffect(() => {
+  useEffect(() => {
     const t = setInterval(() => setIndex((i) => (i + 1) % traits.length), 2200)
     return () => clearInterval(t)
   }, [])
@@ -21,7 +24,13 @@ export default function Hero({ profile, onUpload }) {
   return (
     <section className="relative min-h-[90vh] overflow-hidden">
       <div className="absolute inset-0">
-        <Spline scene="https://prod.spline.design/EF7JOSsHLk16Tlw9/scene.splinecode" style={{ width: '100%', height: '100%' }} />
+        {splineEnabled ? (
+          <Suspense fallback={<div className="w-full h-full bg-gradient-to-b from-slate-900 via-slate-950 to-black" />}> 
+            <LazySpline scene="https://prod.spline.design/EF7JOSsHLk16Tlw9/scene.splinecode" style={{ width: '100%', height: '100%' }} onError={() => setSplineEnabled(false)} />
+          </Suspense>
+        ) : (
+          <div className="w-full h-full bg-gradient-to-b from-sky-900/20 via-slate-950 to-black" />
+        )}
       </div>
       <div className="absolute inset-0 bg-gradient-to-b from-slate-900/30 via-slate-950/60 to-slate-950 pointer-events-none" />
 
