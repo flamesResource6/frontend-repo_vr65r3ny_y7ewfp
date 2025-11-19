@@ -1,6 +1,6 @@
 import React from 'react'
 import { motion } from 'framer-motion'
-import { Briefcase, Film, Download, Certificate, Layers, Mail, Grid, BarChart3 } from 'lucide-react'
+import { Briefcase, Film, Download } from 'lucide-react'
 
 export default function NavModes({ mode, setMode, onDownload }) {
   const Item = ({ value, icon: Icon, label }) => (
