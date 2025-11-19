@@ -1,4 +1,4 @@
-import React, { useState, useEffect, Suspense } from 'react'
+import React, { useState, useEffect, useRef, Suspense } from 'react'
 import { motion } from 'framer-motion'
 
 const traits = [
@@ -15,18 +15,56 @@ const LazySpline = React.lazy(() => import('@splinetool/react-spline').then(mod 
 export default function Hero({ profile, onUpload }) {
   const [index, setIndex] = useState(0)
   const [splineEnabled, setSplineEnabled] = useState(true)
+  const [shouldMountSpline, setShouldMountSpline] = useState(false)
+  const sectionRef = useRef(null)
 
+  // Rotate traits
   useEffect(() => {
     const t = setInterval(() => setIndex((i) => (i + 1) % traits.length), 2200)
     return () => clearInterval(t)
   }, [])
 
+  // Respect reduced motion and low-memory devices
+  useEffect(() => {
+    const reduced = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches
+    const lowMemory = typeof navigator !== 'undefined' && 'deviceMemory' in navigator && navigator.deviceMemory && navigator.deviceMemory < 4
+    if (reduced || lowMemory) {
+      setSplineEnabled(false)
+    }
+  }, [])
+
+  // Mount Spline only when hero is in view
+  useEffect(() => {
+    if (!splineEnabled) return
+    const el = sectionRef.current
+    if (!el || !('IntersectionObserver' in window)) { setShouldMountSpline(splineEnabled); return }
+    const obs = new IntersectionObserver((entries) => {
+      entries.forEach((entry) => {
+        if (entry.isIntersecting) {
+          // Defer mounting until browser is idle to avoid main-thread jank
+          if ('requestIdleCallback' in window) {
+            window.requestIdleCallback(() => setShouldMountSpline(true), { timeout: 1000 })
+          } else {
+            setTimeout(() => setShouldMountSpline(true), 150)
+          }
+          obs.disconnect()
+        }
+      })
+    }, { rootMargin: '0px 0px -20% 0px', threshold: 0.2 })
+    obs.observe(el)
+    return () => obs.disconnect()
+  }, [splineEnabled])
+
   return (
-    <section className="relative min-h-[90vh] overflow-hidden">
+    <section ref={sectionRef} className="relative min-h-[90vh] overflow-hidden">
       <div className="absolute inset-0">
-        {splineEnabled ? (
+        {splineEnabled && shouldMountSpline ? (
           <Suspense fallback={<div className="w-full h-full bg-gradient-to-b from-slate-900 via-slate-950 to-black" />}> 
-            <LazySpline scene="https://prod.spline.design/EF7JOSsHLk16Tlw9/scene.splinecode" style={{ width: '100%', height: '100%' }} onError={() => setSplineEnabled(false)} />
+            <LazySpline 
+              scene="https://prod.spline.design/EF7JOSsHLk16Tlw9/scene.splinecode" 
+              style={{ width: '100%', height: '100%' }} 
+              onError={() => setSplineEnabled(false)} 
+            />
           </Suspense>
         ) : (
           <div className="w-full h-full bg-gradient-to-b from-sky-900/20 via-slate-950 to-black" />
@@ -39,14 +77,14 @@ export default function Hero({ profile, onUpload }) {
           <motion.h1
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.8 }}
+            transition={{ duration: 0.6 }}
             className="text-4xl sm:text-6xl lg:text-7xl font-extrabold tracking-tight text-white"
           >
             Hi, I’m Lee — a curious builder crafting my future one line of code at a time.
           </motion.h1>
           <motion.p
             initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0, transition: { delay: 0.2 } }}
+            animate={{ opacity: 1, y: 0, transition: { delay: 0.15 } }}
             className="mt-6 text-lg sm:text-xl text-slate-300 max-w-2xl"
           >
             I build my future one skill, one certificate, one project at a time.
@@ -54,7 +92,7 @@ export default function Hero({ profile, onUpload }) {
 
           <motion.div
             initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0, transition: { delay: 0.35 } }}
+            animate={{ opacity: 1, y: 0, transition: { delay: 0.25 } }}
             className="mt-6 text-sky-300/90 text-lg font-medium"
           >
             {traits[index]}
